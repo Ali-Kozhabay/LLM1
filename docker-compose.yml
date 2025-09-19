@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  # Your FastAPI Application Service
+
+  # PostgreSQL 17 Service
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=superuser
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=intelligent_lms
+    ports:
+      - "5432:5432" # Expose the database port to your local machine (optional)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # Persist database data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U superuser -d intelligent_lms" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  app:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Pass the database URL to your app. It connects to the 'db' service.
+      - DATABASE_URL1=postgresql+asyncpg://superuser:postgres@db:5432/intelligent_lms
+    depends_on:
+      db:
+         condition: service_healthy
+      # This tells the app to wait until the database is ready
+    command: [ "poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+    volumes:
+      - .:/project # Mount current directory for hot reload in development
+
+volumes:
+  postgres_data:
+
